@@ -1,2 +1,2 @@
-# jingling-s-project
-the code are used in projects
+# jingling-projects-examples
+This file contains the code are used in different projects
