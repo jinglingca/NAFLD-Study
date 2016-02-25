@@ -1,2 +1,2 @@
-# jingling-projects-examples
-This file contains the code are used in different projects
+# Nonalcoholic Fatty Liver Disease 
+This file contains the code and some of plots in this file
