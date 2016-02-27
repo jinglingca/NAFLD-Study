@@ -1,0 +1,419 @@
+---
+title: "The random forest method is used in the NAFLD study"
+author: "Nan Zhang"
+date: "August 14, 2015"
+output: html_document
+---
+
+1.Project Design
+
+Backgroud: Zone 1 and Zone 3 Steatosis as distinct phenotypes of   Nonalcoholic Fatty Liver Disease in Children and their Relationship with Overall Disease Severity.
+
+
+Purpose: To determine the association between the zonality of steatosis and clinical, demographic, and histological features in children with NAFLD.
+
+
+ 
+```{r loading libraries,echo=FALSE,message=FALSE,warning=FALSE}
+library(htmltools)
+library(knitr)
+library(rmarkdown)
+library(plyr)
+library(dplyr)
+library(rpart)
+library(RGtk2)
+library(rattle)
+library(rpart.plot)
+library(RColorBrewer)
+library(randomForest)
+library(FactoMineR)
+library(VSURF)
+```
+
+
+
+2. Import and maniplute data
+
+The original data contain 813 observations and 165 variables.Irrelevant variables for this study are removed , so 51 variables(16 numeric variables,35 category variables) are kept for checking the missing value or outlier. After data manipulation process 42 variables are kept into factor analysis.
+
+
+```{r data manipulation,echo=FALSE,message=FALSE,warning=FALSE}
+biopsy<-read.csv('D:/study/machine learning/presetation/biopsy_zscore_age_1.csv',header=TRUE,stringsAsFactors = FALSE)
+
+biopsy1<-biopsy%>%
+  filter(!steatodx=='99' & !steatosis==0 & (location=='0' | location=='1'))%>%
+  mutate(zonality=ifelse(location=='0','3',
+                         ifelse(location=='1','1',NA)))
+
+#select the target variables
+biopsy2<-biopsy1%>%
+  select(gender,race,hispanic,bmi,bpsysto,bpdiasto,u_acid,hba1c,ast,alt,
+         tot_chol,ldl,glucose,steatosis,fibrosis,lobinfl,portal,
+         balloon,bmiz,age__yrs_dec_,zonality,nas,ggt,waist,trig,hdl,s_insulin,
+         nash)
+
+check<-vector(mode="numeric", length=27)
+
+for (i in 1:ncol(biopsy2)){
+  check[i]=sum(is.na(biopsy2[,i]))
+}
+
+check<-as.data.frame(check)
+
+# imputation missing data
+# alt,glucose, ggt variables have only 1 missing value
+biopsy2$alt[is.na(biopsy2$alt)]<-median(biopsy2$alt,na.rm=TRUE)
+biopsy2$glucose[is.na(biopsy2$glucose)]<-median(biopsy2$glucose,na.rm=TRUE)
+biopsy2$ggt[is.na(biopsy2$ggt)]<-median(biopsy2$ggt,na.rm=TRUE)
+
+#using decision tree to imputate missing value in bpsysto,bpdiasto,u_acid,hba1c,tot_chol,ldl,s_insulin,hdl,trig
+
+predicted_bpsysto <- rpart(bpsysto ~ . ,data=biopsy2[!is.na(biopsy2$bpsysto),], method="anova")
+
+biopsy2$bpsysto[is.na(biopsy2$bpsysto)] <- predict(predicted_bpsysto, biopsy2[is.na(biopsy2$bpsysto),]) 
+
+predicted_bpdiasto <- rpart(bpdiasto ~ . ,
+                       data=biopsy2[!is.na(biopsy2$bpdiasto),], method="anova")
+biopsy2$bpdiasto[is.na(biopsy2$bpdiasto)] <- predict(predicted_bpdiasto, biopsy2[is.na(biopsy2$bpdiasto),])
+
+
+predicted_u_acid <- rpart(u_acid ~ . ,
+                       data=biopsy2[!is.na(biopsy2$u_acid),], method="anova")
+biopsy2$u_acid[is.na(biopsy2$u_acid)] <- predict(predicted_u_acid, biopsy2[is.na(biopsy2$u_acid),])
+
+
+predicted_hba1c <- rpart(hba1c ~ . ,
+                       data=biopsy2[!is.na(biopsy2$hba1c),], method="anova")
+biopsy2$hba1c[is.na(biopsy2$hba1c)] <- predict(predicted_hba1c, biopsy2[is.na(biopsy2$hba1c),])
+
+predicted_tot_chol <- rpart(tot_chol ~ . ,
+                       data=biopsy2[!is.na(biopsy2$tot_chol),], method="anova")
+biopsy2$tot_chol[is.na(biopsy2$tot_chol)] <- predict(predicted_tot_chol, biopsy2[is.na(biopsy2$tot_chol),])
+
+
+predicted_ldl <- rpart(ldl ~ . ,
+                       data=biopsy2[!is.na(biopsy2$ldl),], method="anova")
+biopsy2$ldl[is.na(biopsy2$ldl)] <- predict(predicted_ldl, biopsy2[is.na(biopsy2$ldl),])
+
+predicted_s_insulin <- rpart(s_insulin ~ . ,
+                       data=biopsy2[!is.na(biopsy2$s_insulin),], method="anova")
+biopsy2$s_insulin[is.na(biopsy2$s_insulin)] <- predict(predicted_s_insulin, biopsy2[is.na(biopsy2$s_insulin),])
+
+predicted_hdl<- rpart(hdl ~ . ,
+                       data=biopsy2[!is.na(biopsy2$hdl),], method="anova")
+biopsy2$hdl[is.na(biopsy2$hdl)] <- predict(predicted_hdl, biopsy2[is.na(biopsy2$hdl),])
+
+predicted_trig<- rpart(trig ~ . ,
+                       data=biopsy2[!is.na(biopsy2$trig),], method="anova")
+biopsy2$trig[is.na(biopsy2$trig)] <- predict(predicted_trig, biopsy2[is.na(biopsy2$trig),])
+
+predicted_waist<- rpart(waist~ . ,
+                       data=biopsy2[!is.na(biopsy2$waist),], method="anova")
+biopsy2$waist[is.na(biopsy2$waist)] <- predict(predicted_waist, biopsy2[is.na(biopsy2$waist),])
+
+predicted_bmi<- rpart(bmi~ . ,
+                       data=biopsy2[!is.na(biopsy2$bmi),], method="anova")
+biopsy2$bmi[is.na(biopsy2$bmi)] <- predict(predicted_bmi, biopsy2[is.na(biopsy2$bmi),])
+
+
+
+biopsy5<-biopsy2%>%
+  mutate(gender=as.factor(gender),
+         race=as.factor(race),
+         hispanic=factor(ifelse(hispanic=='y','yes',
+                         ifelse(hispanic=='n','no',
+                         ifelse(hispanic=="",'miss',NA))),
+                  levels=c('yes','no','miss')),
+                                          
+        fibrosis=as.factor(fibrosis),
+        zonality=as.factor(zonality))
+                        
+biopsy_n1<-biopsy5%>%
+  mutate(sex=ifelse(gender=='m',1,
+             ifelse(gender=='f',2,NA)),
+         race1=ifelse(race=='1-aian',1,
+               ifelse(race=='2-asian',2,
+               ifelse(race=='3-pi',3,
+               ifelse(race=='4-black',4,                                                       ifelse(race=='5-white',5,
+               ifelse(race=='6-1+',6,
+               ifelse(race=='7-ref',7,NA))))))),
+         hispanic1=ifelse(hispanic=='yes',1,
+                   ifelse(hispanic=='no',0,
+                   ifelse(hispanic=='miss',2,NA))),
+         hispanic1=ifelse(is.na(hispanic1),3,hispanic1),
+         
+         fibrosis1=ifelse(fibrosis=='0',0,
+                   ifelse(fibrosis=='1a',1,
+                   ifelse(fibrosis=='1b',2,
+                   ifelse(fibrosis=='1c',3,
+                   ifelse(fibrosis=='2',4,
+                   ifelse(fibrosis=='3',5,
+                   ifelse(fibrosis=='m',6,NA))))))),
+         
+         zonality1=factor(ifelse(zonality=="1","zone1",
+                          ifelse(zonality=='3','zone3',NA)),
+                          levels=c('zone1','zone3')))%>%
+  select(-gender,-race,-zonality,-hispanic,-fibrosis)
+                                                                                
+
+                                                                        
+biopsy6<-biopsy5%>%
+  mutate(steatosis1=factor(ifelse(steatosis==0,"steatosis0",
+                           ifelse(steatosis==1,"steatosis1",
+                           ifelse(steatosis==2,"steatosis2",
+                           ifelse(steatosis==3,"steatosis3",NA)))),
+                 levels=c("steatosis0","steatosis1","steatosis2","steatosis3")),
+        lobinfl1=factor(ifelse(lobinfl==0,"lobinfl0",
+                        ifelse(lobinfl==1,"lobinfl1",
+                        ifelse(lobinfl==2,"lobinfl2",
+                        ifelse(lobinfl==3,"lobinfl3",NA)))),
+                        levels=c("lobinfl0","lobinfl1","lobinfl2","lobinfl3")),
+        portal1=factor(ifelse(portal==0,"portal0",
+                       ifelse(portal==1,"portal1",
+                       ifelse(portal==2,"portal2",NA))),
+                       levels=c("portal0","portal1","portal2")),
+        balloon1=factor(ifelse(balloon==0,"balloon0",
+                        ifelse(balloon==1,"balloon1",
+                        ifelse(balloon==2,"balloon2",NA))),
+                        levels=c("balloon0","balloon1","balloon2")),
+        nas1=factor(ifelse(nas=='2',"nas2",
+                    ifelse(nas=='3',"nas3",
+                    ifelse(nas=='4',"nas4",
+                    ifelse(nas=='5',"nas5",
+                    ifelse(nas=='6',"nas6",
+                    ifelse(nas=='7',"nas7",
+                    ifelse(nas=='8',"nas8",NA))))))),
+                levels=c("nas2","nas3","nas4","nas5","nas6","nas7","nas8")))%>%
+   select(gender,race,hispanic,bmi,bpsysto,bpdiasto,u_acid,hba1c,ast,alt,
+          tot_chol,ldl,glucose,steatosis1,fibrosis,lobinfl1,portal1,balloon1,
+          bmiz,age__yrs_dec_,zonality,nas1,ggt,waist,trig,hdl,s_insulin)
+
+
+
+                                                                  
+# name1<-colnames(biopsy1)
+# name2<-colnames(biopsy2)
+# name1[!name1%in%name2]
+
+biopsy7<-biopsy1%>%
+  select(income,diabetes_1,diabetes_2,hypertension,insulin,weight,droplet,
+         microfat,steatodx,hyperlipidemia,cholelithiasis,fhx_liver,fhx_nafld,
+         fhx_obesity,fhx_cholesterol)
+
+biopsy8<-biopsy7%>%
+  mutate(income1=as.factor(income),
+         diabetes_1_n=ifelse(is.na(diabetes_1),"no diabetes_1",
+                      ifelse(diabetes_1==1,"diabetes_1")),
+         diabetes_1_n=as.factor(diabetes_1_n),
+                          
+        diabetes_2_n=ifelse(is.na(diabetes_2),"no diabetes_2",
+                     ifelse(diabetes_2==1,"diabetes_2")),
+        diabetes_2_n=as.factor(diabetes_2_n),
+        hypertension_n=ifelse(is.na(hypertension),"no hypertension",
+                       ifelse(hypertension==1,"hypertension")),
+        hypertension_n=as.factor(hypertension_n),
+                          
+        insulin_n=ifelse(is.na(insulin),"insulin user",
+                  ifelse(insulin==1,"insulin non")),
+        insulin_n=as.factor(insulin_n),
+        hyperlipidemia_n=ifelse(is.na(hyperlipidemia)," non hyperlipidemia",
+                        ifelse(hyperlipidemia==1," hyperlipidemia")),
+        hyperlipidemia_n=as.factor( hyperlipidemia_n),
+                          
+        cholelithiasis_n=ifelse(is.na(cholelithiasis)," non cholelithiasis",
+                        ifelse(cholelithiasis==1," hyperlipidemia")),
+        cholelithiasis_n=as.factor(cholelithiasis_n),
+        fhx_liver_n=ifelse(is.na(fhx_liver)," non fhx_liver",
+                    ifelse(fhx_liver==1,"fhx_liver")),
+        fhx_liver_n=as.factor(fhx_liver_n),
+        fhx_nafld_n=ifelse(is.na(fhx_nafld)," non fhx_nafld",
+                    ifelse(fhx_nafld==1,"fhx_nafld")),
+        fhx_nafld_n=as.factor(fhx_nafld_n),
+                          
+        fhx_obesity_n=ifelse(is.na(fhx_obesity)," non fhx_obesity",
+                      ifelse(fhx_obesity==1,"fhx_obesity")),
+        fhx_obesity_n=as.factor(fhx_obesity_n),
+                          
+        fhx_cholesterol_n=ifelse(is.na(fhx_cholesterol),"non fhx_cholesterol",
+                          ifelse(fhx_cholesterol==1,"fhx_cholesterol")),
+        fhx_cholesterol_n=as.factor(fhx_cholesterol_n),
+                          
+        droplet_n=ifelse(is.na(droplet),"no result",
+                  ifelse(droplet==0,"droplet0",
+                  ifelse(droplet==1,"droplet1",
+                  ifelse(droplet==2,"droplet2",NA)))),
+        droplet_n=as.factor(droplet_n),
+        
+        steatodx_n=as.factor(steatodx),
+        microfat_n=ifelse(microfat==0,'microfat0',
+                    ifelse(microfat==1,"microfat1",NA)),
+        microfat_n=as.factor(microfat_n))%>%
+  select(income1,diabetes_1_n,diabetes_2_n,hypertension_n,insulin_n,weight,
+         droplet_n,microfat_n,steatodx_n,hyperlipidemia_n,cholelithiasis_n,
+         fhx_liver_n,fhx_nafld_n,fhx_obesity_n,fhx_cholesterol_n)
+
+biopsy_n<-cbind(biopsy6,biopsy8) 
+
+colnames(biopsy_n) 
+                       
+```
+
+
+
+
+
+3. Factor Analysis for Mix data 
+```{r Factor Analysis,warning=FALSE}
+set.seed(3101318)
+t1<-FAMD(biopsy_n, ncp =30)
+
+
+```
+
+
+```{r a scree plot, echo=FALSE,warning=FALSE}
+eigenvalues<-t1$eig
+barplot(eigenvalues[, 2], names.arg=1:nrow(eigenvalues),
+        main = "Variances",
+        xlab = "Principal Components",
+        ylab = "Percentage of variances",
+        col ="steelblue")
+lines(x = 1:nrow(eigenvalues), eigenvalues[, 2],
+      type="b", pch=19, col = "red")
+```
+
+The third plot is all variables projection in dim1 and dim2.
+The fourth plot is numeric variables in dim1 and dim2.
+The fifth plot is categorical variables in dim1 and dim2.
+The sixth plot is scree plot which shows ~92% of the informations (variances) contained in the data are retained by the first two principal components.
+
+
+
+
+
+```{r dimesion desc,echo=FALSE}
+desc_var<-dimdesc(t1,axes = c(1,2), proba = 0.01)
+desc_var$Dim.1[c(1,2)]
+
+```
+From the factor analysis,continuous variables (the 16 first  selected):Bmi, bpsysto, bpdiasto, uacid , hba1c, ast, alt, tot_chol, ldl, glucose,   bmiz, age, ggt,  waist, trig, hdl.Categories variables (the 12 first selected):gender,nas, race, hispanic, hba1c,  steatosis, fibrosis, lobinfl, portal, balloon, sinsulin,nash.
+
+
+
+
+
+
+4. Random Forest method to use find out the most important predictors
+```{r random forest1,echo=FALSE}
+set.seed(100)
+
+my_forest2<-randomForest(zonality ~ ., data=biopsy5,importance=TRUE, sampsize=100,ntree=2000)
+# Make your prediction using the test set
+
+plot(my_forest2,main="NAFLD random forest error rate plot")
+
+```
+From the plot above, we can get the average error rate is 0.15, the zone1 and zone3 error rate difference is 0.2.If there are more data to train this model, the difference of error rate will probably reduce.
+
+
+
+
+
+```{r random forest2,echo=FALSE}
+par( mgp = c(5, 1, 0))
+varImpPlot(my_forest2,main="NAFLD random forest important variable plot")
+gini<-as.data.frame(round(importance(my_forest2), 2))
+
+```
+This plot shows the variables contribution for the MeanDecreaseAccurary and MeanDecreaseGini
+
+
+```{r random forest select var,echo=FALSE}
+set.seed(120)
+y=biopsy5$zonality
+x=biopsy_n1[,1:27]
+
+x<-x%>%mutate(sex=as.factor(sex),
+              race1=as.factor(race1),
+              hispanic1=as.factor(hispanic1),
+              fibrosis1=as.factor(fibrosis1),
+              steatosis=as.factor(steatosis),
+              lobinfl=as.factor(lobinfl),
+              portal=as.factor(portal),
+              balloon=as.factor(balloon),
+              nas=as.factor(nas))
+vbio<- VSURF(x, y, mtry = 9)
+#plot(vbio)
+plot(vbio,step = "thres", imp.sd = FALSE, var.names = TRUE)
+number <- c(1:27)
+number[vbio$varselect.thres]
+number[vbio$varselect.interp]
+number[vbio$varselect.pred]
+```
+
+From analysis above, sixteen variables above threshold(the red line in the plot) are selected as important variables, and eight variables(age, fibrosis, waist, u_acid, bmiz, ast,bmi,bpsysto) are picked as predictors for zonality partition. But bmi can be remove from here.
+
+
+
+
+
+
+```{r random forest4, echo=FALSE}
+set.seed(1100)
+biopsy_n2<-cbind(x,y)
+bio_fr1<-randomForest(y ~ age__yrs_dec_ + fibrosis1 + waist +u_acid + bmiz + ast,data=biopsy_n2,sampsize=100,importance=TRUE,proximity=TRUE,ntree=2000)
+
+
+bio_fr.mds1 <- cmdscale(1 - bio_fr1$proximity, eig=TRUE)
+op <- par(pty="s")
+pairs(cbind(biopsy_n1[,c(17,12,4,20,16,6)], bio_fr.mds1$points), cex=0.6, gap=0,
+      col=c("red", "green")[as.numeric(biopsy_n1$zonality1)],
+      main="NAFLD Data: Predictors and MDS of Proximity Based on RandomForest")
+```
+
+
+From the plot above, we can see how each important variable to distinguish the zonality 1 and zonality 3 partition.The plot can clearly shows that bmiz and ast can not distinguish these two zonalities. Four variables (age, fibrosis, u_acid, waist) will be included in the decision tree.
+
+
+
+
+
+5.Build up a preliminary decision tree model
+```{r decision tree,echo=FALSE}
+set.seed(112)
+
+train1<-biopsy5[sample(nrow(biopsy5),220,replace = FALSE,prob = NULL),]
+test1<-filter(biopsy5,!nash%in%train1$nash)
+
+
+my_forest3<-rpart(zonality ~ age__yrs_dec_+fibrosis+u_acid+waist,data=train1)
+fancyRpartPlot(my_forest3,main="Decision tree model for NAFLD")
+```
+
+
+A decision tree model is build up. Since this is the preliminary model, it will be adjusted later.
+
+* The formular of model is:
+ 
+ $$ Zonality = Age+Fibrosis+Uric_Acid+Waist+error $$
+ 
+
+
+
+```{r build the forest3,echo=FALSE}
+my_prediction <- predict(my_forest3, test1,type='class')
+my_solution <- data.frame(nash = test1$nash,zonality = test1$zonality, predict_zonality = my_prediction)
+my_solution%>%
+  mutate(diff=as.numeric(zonality)-as.numeric(predict_zonality))%>%
+  filter(!diff==0)%>%
+  summarise(n=n())
+```
+
+
+This model is built using the training dataset, and it was examined by the test dataset. There are 34 observations between predicted zonality and zonality.The error rate for this model is 0.1588235. That means this model can reach almost 85% correction rate for predicted zonality comparing original zonality result in test dataset. The details for this model is below.
+
+
+```{r summary forest3,echo=FALSE}
+print(my_forest3)
+```
+
