@@ -1,4 +1,4 @@
 # Nonalcoholic Fatty Liver Disease files
-### This file contains the code NAFLAD.rm
-### Analysis result of NAFLD study
+1. This file contains the code NAFLAD.rm
+2. Analysis result of NAFLD study
 
