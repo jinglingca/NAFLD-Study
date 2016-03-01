@@ -1,5 +1,5 @@
 # Nonalcoholic Fatty Liver Disease files
-1. This file contains the code NAFLAD.rmd
-2. Analysis result of NAFLD1.pdf
-3. Here just included the Random Forest and Factor analysis part for NAFLD.
+1. NAFLAD.rmd contains R code for part of analysis 
+2. Analysis result contains in NAFLD1.pdf
+3. This R codes just includs the Random Forest and Factor analysis part for NAFLD analysis.
 
